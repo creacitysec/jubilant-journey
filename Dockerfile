@@ -1,12 +1,21 @@
 FROM runpod/worker-comfyui:5.8.5-base
 
 # ── Custom nodes ──
-# Impact Pack (Face Detailer, Person Detailer)
+# Impact Pack (Face Detailer, Person Detailer) + Subpack (UltralyticsDetectorProvider)
 RUN cd /comfyui/custom_nodes && \
     git clone https://github.com/ltdrdata/ComfyUI-Impact-Pack.git && \
     cd ComfyUI-Impact-Pack && \
-    git clone https://github.com/ltdrdata/ComfyUI-Impact-Subpack impact_subpack && \
-    pip install -r requirements.txt 2>/dev/null || true
+    pip install -r requirements.txt && \
+    python install.py
+
+RUN cd /comfyui/custom_nodes && \
+    git clone https://github.com/ltdrdata/ComfyUI-Impact-Subpack.git && \
+    cd ComfyUI-Impact-Subpack && \
+    (pip install -r requirements.txt 2>/dev/null || true) && \
+    (python install.py 2>/dev/null || true)
+
+# Ultralytics for face/person detection
+RUN pip install ultralytics
 
 # Ultimate SD Upscale
 RUN cd /comfyui/custom_nodes && \
