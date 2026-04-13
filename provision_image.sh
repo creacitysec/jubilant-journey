@@ -2,12 +2,20 @@
 set -e
 
 VOL="/runpod-volume"
-MODELS="$VOL/models"
-MARKER="$MODELS/.cyberrealistic_pony_ready"
+COMFY="/comfyui/models"
 
-# ── Download models to network volume on first cold start ──
-if [ -d "$VOL" ] && [ ! -f "$MARKER" ]; then
-    echo "[provision] First start — downloading CyberRealisticPony pipeline models..."
+# Decide where to store models: network volume if available, else local ComfyUI
+if [ -d "$VOL" ]; then
+    MODELS="$VOL/models"
+    MARKER="$MODELS/.cyberrealistic_pony_ready"
+else
+    MODELS="$COMFY"
+    MARKER="$COMFY/.cyberrealistic_pony_ready"
+fi
+
+# ── Download models if not yet present ──
+if [ ! -f "$MARKER" ]; then
+    echo "[provision] Downloading CyberRealisticPony pipeline models to $MODELS ..."
     mkdir -p "$MODELS/checkpoints" "$MODELS/upscale_models" "$MODELS/ultralytics/bbox" "$MODELS/ultralytics/segm"
 
     # CyberRealisticPony v17 (~7GB)
@@ -15,7 +23,7 @@ if [ -d "$VOL" ] && [ ! -f "$MARKER" ]; then
         "https://civitai.com/api/download/models/2727742" \
         && echo "[provision] CyberRealisticPony v17 done") &
 
-    # SUPIR-v0Q fp16 (~2.7GB) — quality-oriented restoration
+    # SUPIR-v0Q fp16 (~2.7GB)
     (wget -q --show-progress -O "$MODELS/checkpoints/SUPIR-v0Q_fp16.safetensors" \
         "https://huggingface.co/Kijai/SUPIR_pruned/resolve/main/SUPIR-v0Q_fp16.safetensors" \
         && echo "[provision] SUPIR-v0Q done") &
@@ -37,25 +45,23 @@ if [ -d "$VOL" ] && [ ! -f "$MARKER" ]; then
 
     wait
     touch "$MARKER"
-    echo "[provision] All models ready on volume."
+    echo "[provision] All models ready."
 fi
 
-# ── Symlink volume models into ComfyUI model dirs ──
-if [ -d "$MODELS" ]; then
+# ── Symlink volume models into ComfyUI (only needed when using volume) ──
+if [ -d "$VOL" ] && [ -d "$MODELS" ]; then
     for DIR in checkpoints upscale_models; do
         if [ -d "$MODELS/$DIR" ]; then
-            mkdir -p "/comfyui/models/$DIR"
-            ln -sf "$MODELS/$DIR"/* "/comfyui/models/$DIR/" 2>/dev/null || true
+            mkdir -p "$COMFY/$DIR"
+            ln -sf "$MODELS/$DIR"/* "$COMFY/$DIR/" 2>/dev/null || true
         fi
     done
-    # Ultralytics models for Impact Pack
     if [ -d "$MODELS/ultralytics" ]; then
-        mkdir -p "/comfyui/models/ultralytics/bbox" "/comfyui/models/ultralytics/segm"
-        ln -sf "$MODELS/ultralytics/bbox"/* "/comfyui/models/ultralytics/bbox/" 2>/dev/null || true
-        ln -sf "$MODELS/ultralytics/segm"/* "/comfyui/models/ultralytics/segm/" 2>/dev/null || true
+        mkdir -p "$COMFY/ultralytics/bbox" "$COMFY/ultralytics/segm"
+        ln -sf "$MODELS/ultralytics/bbox"/* "$COMFY/ultralytics/bbox/" 2>/dev/null || true
+        ln -sf "$MODELS/ultralytics/segm"/* "$COMFY/ultralytics/segm/" 2>/dev/null || true
     fi
-    echo "[provision] Volume models symlinked into /comfyui/models/"
+    echo "[provision] Volume models symlinked into $COMFY/"
 fi
 
-# ── Hand off to original worker startup ──
 exec /start.sh
