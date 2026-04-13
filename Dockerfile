@@ -1,32 +1,26 @@
 FROM runpod/worker-comfyui:5.8.5-base
 
-# ── Custom nodes ──
-# Impact Pack (Face Detailer, Person Detailer) + Subpack (UltralyticsDetectorProvider)
+# ── Impact Pack + Subpack ──
 RUN cd /comfyui/custom_nodes && \
     git clone https://github.com/ltdrdata/ComfyUI-Impact-Pack.git && \
     cd ComfyUI-Impact-Pack && \
-    pip install -r requirements.txt && \
-    python install.py
+    pip install --no-cache-dir -r requirements.txt
 
 RUN cd /comfyui/custom_nodes && \
-    git clone https://github.com/ltdrdata/ComfyUI-Impact-Subpack.git && \
-    cd ComfyUI-Impact-Subpack && \
-    (pip install -r requirements.txt 2>/dev/null || true) && \
-    (python install.py 2>/dev/null || true)
+    git clone https://github.com/ltdrdata/ComfyUI-Impact-Subpack.git
 
-# Ultralytics for face/person detection
-RUN pip install ultralytics
+RUN pip install --no-cache-dir ultralytics
 
-# Ultimate SD Upscale
+# ── Ultimate SD Upscale ──
 RUN cd /comfyui/custom_nodes && \
     git clone https://github.com/ssitu/ComfyUI_UltimateSDUpscale.git --recursive
 
-# SUPIR upscale (kijai)
+# ── SUPIR (kijai) ──
 RUN cd /comfyui/custom_nodes && \
     git clone https://github.com/kijai/ComfyUI-SUPIR.git && \
-    cd ComfyUI-SUPIR && pip install -r requirements.txt 2>/dev/null || true
+    cd ComfyUI-SUPIR && pip install --no-cache-dir -r requirements.txt
 
-# KJNodes (utility nodes)
+# ── KJNodes ──
 RUN comfy-node-install comfyui-kjnodes
 
 # ── Provision script ──
